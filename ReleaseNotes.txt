@@ -1,0 +1,15 @@
+##########-----Release 1.0.1
+
+---Description
+1. NULL IMEI Counter for reporting
+2. IMSI Only is mandatory if Imsi null then should go in error record.
+3. MSISDN is mandatory is removed.
+
+---Database Changes
+
+ALTER TABLE cdr_file_pre_processing_detail add TOTAL_NULL_IMEIS NUMBER(10);
+
+
+---application.yml
+
+NA

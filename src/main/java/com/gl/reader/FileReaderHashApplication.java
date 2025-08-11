@@ -53,6 +53,7 @@ public class FileReaderHashApplication {
     static long ierror = 0;
     static long iinSet = 0;
     static long itotalCount = 0;
+    static long iNullImeiCount = 0;
     static String type;
     static long value;
     static long processed = 0;
@@ -148,7 +149,7 @@ public class FileReaderHashApplication {
                 if (value == 0) {
                     logger.info("No file present");
                     String currentTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
-                    CdrFilePreProcessing.insertReportv2("O", "0", 0L, 0L, 0L, 0L,
+                    CdrFilePreProcessing.insertReportv2("O", "0", 0L, 0L, 0L, 0L,iNullImeiCount,
                             currentTime, currentTime, (float) 0, (float) 0, operatorName, sourceName,
                             0L, tag, 0, headCount, servername);
                     insertedKey = ModulesAudit.insertModuleAudit(conn, sourceName.equalsIgnoreCase("all") ? "P2" : "P1", operatorName + "_" + sourceName, servername);
@@ -192,7 +193,7 @@ public class FileReaderHashApplication {
                             Files.move(Paths.get(inputLocation + "/" + operatorName + "/" + sourceName + "/" + file.getName()),
                                     Paths.get(outputLocation + "/" + operatorName + "/" + sourceName + "/error/" + year + "/" + month + "/" + day + "/" + file.getName()));
 
-                            CdrFilePreProcessing.insertReportv2("I", file.getName(), itotalCount, ierror, iduplicate, iinSet,
+                            CdrFilePreProcessing.insertReportv2("I", file.getName(), itotalCount, ierror, iduplicate, iinSet,iNullImeiCount,
                                     startTime1.toString(), Instant.now(offsetClock).toString(), 0.0f, Tps, operatorName, sourceName, inputOffset, tag, 1, headCount, servername);
                             processed++;
                             continue;
@@ -222,7 +223,7 @@ public class FileReaderHashApplication {
                             Tps = itotalCount / timeTakenF;
                             logger.info(" Input File Report -- III FileName: " + fileName + ", Date: " + dtf.format(now) + ", Start Time: " + startTime + ", End Time: " + endTime + ", Time Taken: " + timeTakenF + ", Operator Name: " + operatorName + ", Source Name: " + sourceName + ", TPS: " + Tps + ", Error: " + ierror + ", inSet: " + iinSet + ", totalCount: " + itotalCount + ", duplicate: " + iduplicate + ", volume: " + inputOffset + ", tag: " + tag);
                             fileCount++;
-                            CdrFilePreProcessing.insertReportv2("I", fileName, itotalCount, ierror, iduplicate, iinSet,
+                            CdrFilePreProcessing.insertReportv2("I", fileName, itotalCount, ierror, iduplicate, iinSet,iNullImeiCount,
                                     startTime1.toString(), endTime.toString(), timeTakenF, Tps,
                                     operatorName, sourceName, inputOffset, tag, 1, headCount, servername);
                             headCount = 0;
@@ -246,7 +247,7 @@ public class FileReaderHashApplication {
                             }
                             Tps = totalCount / timeTakenF;
                             logger.info("Output File Report XXXX In FileName: " + fileName + ", Date: " + dtf.format(now) + ", Start Time: " + startTimeOutput1 + ", End Time: " + endTimeOutput + ", Time Taken: " + timeTakenF + ", Operator Name: " + operatorName + ", Source Name: " + sourceName + ", TPS: " + Tps + ", Error: " + error + ", inSet: " + inSet + ", totalCount: " + totalCount + ", duplicate: " + duplicate + ", volume: " + outputOffset + ", tag: " + tag);
-                            CdrFilePreProcessing.insertReportv2("O", fileName, totalCount, error, duplicate, inSet,
+                            CdrFilePreProcessing.insertReportv2("O", fileName, totalCount, error, duplicate, inSet,iNullImeiCount,
                                     startTimeOutput1, endTimeOutput.toString(), timeTakenF,
                                     Tps, operatorName, sourceName, outputOffset, tag, fileCount,
                                     headCount, servername);
@@ -296,7 +297,7 @@ public class FileReaderHashApplication {
                             + ", Operator Name: " + operatorName + ", Source Name: " + sourceName + ", TPS: " + Tps
                             + ", Error: " + error + ", inSet: " + inSet + ", totalCount: " + totalCount
                             + ", duplicate: " + duplicate + ", volume: " + outputOffset + ", tag: " + tag + "; File Processed  " + fileCount + "Total Final File count " + totalFileCount);
-                    CdrFilePreProcessing.insertReportv2("O", fileName, totalCount, error, duplicate, inSet, startTimeOutput1,
+                    CdrFilePreProcessing.insertReportv2("O", fileName, totalCount, error, duplicate, inSet, iNullImeiCount,startTimeOutput1,
                             endTimeOutput.toString(), timeTakenF, Tps, operatorName, sourceName, outputOffset, tag,
                             fileCount, headCount, servername);
                     totalFileCount += fileCount;
@@ -429,6 +430,7 @@ public class FileReaderHashApplication {
                 Book book = createBook(imei, imsi, msisdn, recordType, systemType, folder_name, file_name, event_time);
 
                 if ((imei.isEmpty() || imei.matches("^[0]*$"))) {
+                    iNullImeiCount++;
                     if (cdrImeiCheckMap.get("CDR_NULL_IMEI_CHECK").equalsIgnoreCase("true")) {
                         logger.info("Null Imei ,Check True, Error generator : " + imei);
                         Book bookError = createBook(imei, imsi, msisdn, recordType, systemType, folder_name, file_name, event_time);
@@ -447,12 +449,10 @@ public class FileReaderHashApplication {
                         logger.info("Null Imei and Check  is False, now Converting  imei :" + imei);
                     }
                 }
-                if (imsi.isEmpty() || msisdn.isEmpty()
-                        || imsi.length() > 20 || msisdn.length() > 20 || (!imsi.matches("^[a-zA-Z0-9_]*$"))
-                        || (!msisdn.matches("^[a-zA-Z0-9_]*$"))
+                if (imsi.isEmpty() || imsi.length() > 20 || (!imsi.matches("^[a-zA-Z0-9_]*$"))
                         || ((cdrImeiCheckMap.get("CDR_IMEI_LENGTH_CHECK").equalsIgnoreCase("true")) && !(Arrays.asList(myArray).contains(String.valueOf(imei.length()))))
                         || (!imei.matches("^[ 0-9 ]+$") && cdrImeiCheckMap.get("CDR_ALPHANUMERIC_IMEI_CHECK").equalsIgnoreCase("true"))) {
-                    logger.info("Wrong record: imsi/mssidn-> empty, >20, !a-Z0-9 :: [" + imsi + "][ " + msisdn + "]"
+                    logger.info("Wrong record: imsi-> empty, >20, !a-Z0-9 :: [" + imsi + "]"
                             + " OR imei->When length check defined & length criteria not met,non numeric with alphaNum Check true :[" + imei + "] ");
                     Book bookError = createBook(imei, imsi, msisdn, recordType, systemType, folder_name, file_name, event_time);
                     if (errorFile.contains(bookError)) {
@@ -482,8 +482,8 @@ public class FileReaderHashApplication {
                 //    HashMap<String, HashMap<String, Book>> BookHashMap
 
                 if (BookHashMap.containsKey(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI())) {
-                    if (!BookHashMap.get(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI()).containsKey(book.getMSISDN())) {
-                        BookHashMap.get(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI()).put(book.getMSISDN(), book);
+                    if (!BookHashMap.get(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI()).containsKey(book.getIMSI())) {
+                        BookHashMap.get(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI()).put(book.getIMSI(), book);
                         inSet++;
                         iinSet++;
                         outputOffset += line.getBytes(StandardCharsets.US_ASCII).length + 1; // 1 is for line separator
@@ -493,7 +493,7 @@ public class FileReaderHashApplication {
                     }
                 } else {
                     HashMap<String, Book> bookMap = new HashMap<>();
-                    bookMap.put(book.getMSISDN(), book);
+                    bookMap.put(book.getIMSI(), book);
                     BookHashMap.put(book.getIMEI().length() > 14 ? book.getIMEI().substring(0, 14) : book.getIMEI(), bookMap);
                     // logger.info("If no imei then object: " + book);
                     inSet++;
